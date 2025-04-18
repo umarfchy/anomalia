@@ -46,7 +46,7 @@ services:
     image: docker.elastic.co/beats/filebeat:7.17.0
     user: root
     volumes:
-      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./filebeat/filebeat.yaml:/usr/share/filebeat/filebeat.yaml:ro
       - /var/log:/var/log:ro
     depends_on: [kafka]
 volumes:
