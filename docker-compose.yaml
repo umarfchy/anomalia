@@ -2,30 +2,44 @@ version: '3.8'
 services:
   zookeeper:
     image: bitnami/zookeeper:3.8
-    environment: [ALLOW_ANONYMOUS_LOGIN=yes]
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"        # Zookeeper client port
+
   kafka:
     image: bitnami/kafka:3
-    depends_on: [zookeeper]
+    depends_on:
+      - zookeeper
     environment:
-      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-      ALLOW_PLAINTEXT_LISTENER: "yes"
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"        # Kafka PLAINTEXT listener
+
   loki:
     image: grafana/loki:2.7.1
-    ports: ["3100:3100"]
+    ports:
+      - "3100:3100"        # Loki HTTP API
     volumes:
       - ./loki-config.yaml:/etc/loki/local-config.yaml:ro
     command: -config.file=/etc/loki/local-config.yaml
+
   promtail:
     image: grafana/promtail:2.7.1
-    depends_on: [loki]
+    depends_on:
+      - loki
     volumes:
       - ./promtail-config.yaml:/etc/promtail/promtail.yaml:ro
       - /var/log:/var/log:ro
     command: -config.file=/etc/promtail/promtail.yaml
+
   grafana:
     image: grafana/grafana:9.5.0
-    depends_on: [loki]
-    ports: ["3000:3000"]
+    depends_on:
+      - loki
+    ports:
+      - "3000:3000"        # Grafana UI
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
@@ -33,21 +47,29 @@ services:
     volumes:
       - grafana-storage:/var/lib/grafana
       - ./provisioning:/etc/grafana/provisioning:ro
+
+  # Uncomment and adjust if you bring Faust back:
   # faust-app:
   #   build: ./faust-app
-  #   depends_on: [kafka, loki]
+  #   depends_on:
+  #     - kafka
+  #     - loki
   #   environment:
   #     KAFKA_BROKER: kafka:9092
   #     LOKI_URL: http://loki:3100/loki/api/v1/push
   #   volumes:
   #     - ./faust-app:/app
+  #   # Faust is a worker, so no incoming ports to expose
   #   command: ['faust', '-A', 'worker.app', 'worker', '-l', 'info']
+
   filebeat:
     image: docker.elastic.co/beats/filebeat:7.17.0
     user: root
     volumes:
-      - ./filebeat/filebeat.yaml:/usr/share/filebeat/filebeat.yaml:ro
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - /var/log:/var/log:ro
-    depends_on: [kafka]
+    depends_on:
+      - kafka
+
 volumes:
   grafana-storage:
