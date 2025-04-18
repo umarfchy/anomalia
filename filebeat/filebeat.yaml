@@ -1,0 +1,56 @@
+filebeat.inputs:
+  # Application logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/app/*.log
+    fields:
+      topic: logs.app
+    fields_under_root: true
+
+  # Web server access logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/access/*.log
+    fields:
+      topic: logs.access
+    fields_under_root: true
+
+  # System logs
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/system/*.log
+    fields:
+      topic: logs.system
+    fields_under_root: true
+
+# Optional: multiline parsing (uncomment if needed)
+#  multiline.pattern: '^[[:space:]]'
+#  multiline.negate: false
+#  multiline.match: after
+
+processors:
+  - add_host_metadata: ~
+  - add_cloud_metadata: ~
+
+output.kafka:
+  # Kafka broker service name as per docker-compose
+  hosts: ["kafka:9092"]
+  # Use the 'topic' field set on each event
+  topic: '%{[topic]}'
+  # How many acknowledgments to request from Kafka
+  required_acks: 1
+  # Compression for efficiency
+  compression: gzip
+  # Maximum size of a single message
+  max_message_bytes: 1000000
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat.log
+  keepfiles: 7
+  permissions: 0644
